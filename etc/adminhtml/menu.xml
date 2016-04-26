@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © 2016 MageSpecialist - IDEALIAGroup srl. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="MSP_CmsImportExport::import" title="Import" module="MSP_CmsImportExport" sortOrder="100"
+             parent="Magento_Backend::content_elements" action="cms/import" resource="MSP_CmsImportExport::import"/>
+    </menu>
+</config>
