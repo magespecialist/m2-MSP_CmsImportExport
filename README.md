@@ -1,21 +1,21 @@
 # MSP_CmsImportExport
 
-MSP_CmsImportExport is a module for Magento 2 allowing users to **import/export CMS pages** or blocks.
+MSP_CmsImportExport is a module for Magento 2 allowing users to **import/export CMS pages or blocks**.
 
-MSP_CmsImportExport supports **multistore** and **media attachments**.
+MSP_CmsImportExport supports **multistore** and **wysiwyg images**.
 
 ## How to export contents
 
-Select one or more pages you wish to export from CMS > Pages in your backend and select "Export" from the mass action menù.
+Select one or more pages you wish to export from **CMS > Pages** in your Magento Admin and select **Export** from the mass action menù.
 
 You will download a **ZIP file** containing pages or blocks information. If your pages or blocks contain one or more images,
-they will be added in the ZIP file.
+they will be automatically added in the ZIP file.
 
 ## How to import contents
 
-A new option "Import" should appear in your Magento 2 "content" submenu. Click on it to import a previously exported ZIP file.
+A new option **Import** will appear in your Magento Admin **Content** bmenu. Click on it to import a previously exported ZIP file.
 
-While importing you can change the import mode:
+While importing you can change import modes:
 
 ### CMS import mode
 
