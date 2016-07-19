@@ -3,17 +3,16 @@
     "description": "",
     "require": {
         "php": "~5.5.0|~5.6.0|~7.0.0",
-        
+
+        "msp/common": "*",
         "magento/magento-composer-installer": "*"
     },
     "suggest": {
 
     },
     "type": "magento2-module",
-    "version": "0.1.0",
-    "license": [
-
-    ],
+    "version": "0.1.2",
+    "license": "OSL 3.0",
     "autoload": {
         "files": [
             "registration.php"
@@ -21,13 +20,6 @@
         "psr-4": {
             "MSP\\CmsImportExport\\": ""
         }
-    },
-    "extra": {
-        "map": [
-            [
-                "*",
-                "MSP/CmsImportExport"
-            ]
-        ]
     }
 }
+

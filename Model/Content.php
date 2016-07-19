@@ -572,7 +572,6 @@ class Content implements ContentInterface
      */
     public function setStoresMap(array $storesMap)
     {
-        $this->storesMap = $storesMap;
         return $this;
     }
 }
