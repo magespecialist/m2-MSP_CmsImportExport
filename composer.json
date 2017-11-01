@@ -3,7 +3,7 @@
     "description": "",
     "require": {
         "php": "7.0.2|7.0.4|~7.0.6",
-        "magento/framework": "100.1.*",
+        "magento/framework": "100.2.*",
         "msp/common": "*",
         "magento/magento-composer-installer": "*"
     },
