@@ -11,7 +11,7 @@
 
     },
     "type": "magento2-module",
-    "license": "OSL 3.0",
+    "license": "OSL-3.0",
     "autoload": {
         "files": [
             "registration.php"
