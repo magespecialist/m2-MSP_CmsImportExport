@@ -260,7 +260,7 @@ class Content implements ContentInterface
         foreach ($blockInterfaces as $blockInterface) {
             $blockInfo = $this->blockToArray($blockInterface);
             $blocks[$this->_getBlockKey($blockInterface)] = $blockInfo;
-            $media += $blockInfo['media'];
+            $media = array_merge($media, $blockInfo['media']);
         }
 
         return [
@@ -282,7 +282,7 @@ class Content implements ContentInterface
         foreach ($pageInterfaces as $pageInterface) {
             $pageInfo = $this->pageToArray($pageInterface);
             $pages[$this->_getPageKey($pageInterface)] = $pageInfo;
-            $media += $pageInfo['media'];
+            $media = array_merge($media, $pageInfo['media']);
         }
 
         return [
