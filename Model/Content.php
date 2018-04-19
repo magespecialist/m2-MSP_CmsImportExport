@@ -34,7 +34,6 @@ use Magento\Framework\Stdlib\DateTime\DateTime;
 use MSP\CmsImportExport\Api\ContentInterface;
 use Magento\Framework\Filesystem\Io\File;
 
-
 class Content implements ContentInterface
 {
     const JSON_FILENAME = 'cms.json';
@@ -318,8 +317,7 @@ class Content implements ContentInterface
         $zipArchive->addFromString(self::JSON_FILENAME, $jsonPayload);
 
         // Add media files
-        foreach ($contentArray['media'] as $mediaFile)
-        {
+        foreach ($contentArray['media'] as $mediaFile) {
             $absMediaPath = $this->filesystem->getMediaPath($mediaFile);
             if ($this->file->fileExists($absMediaPath, true)) {
                 $zipArchive->addFile($absMediaPath, self::MEDIA_ARCHIVE_PATH . '/' . $mediaFile);
@@ -481,9 +479,7 @@ class Content implements ContentInterface
                 $destFile = $this->filesystem->getMediaPath($mediaFile);
 
                 if ($this->file->fileExists($sourceFile, true)) {
-
-                    if (
-                        $this->file->fileExists($destFile, true) &&
+                    if ($this->file->fileExists($destFile, true) &&
                         ($this->mediaMode == ContentInterface::MEDIA_MODE_SKIP)
                     ) {
                         continue;

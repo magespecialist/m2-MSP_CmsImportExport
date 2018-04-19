@@ -25,7 +25,8 @@ namespace MSP\CmsImportExport\Api;
  * @package MSP\CmsImportExport\Api
  * @api
  */
-interface ContentInterface {
+interface ContentInterface
+{
     const CMS_MODE_UPDATE = 'update';
     const CMS_MODE_SKIP = 'skip';
 

@@ -22,7 +22,8 @@ namespace MSP\CmsImportExport\Block\Adminhtml;
 
 use Magento\Backend\Block\Widget\Form\Container;
 
-class Import extends Container {
+class Import extends Container
+{
     protected $_mode = 'upload';
 
     protected function _construct()

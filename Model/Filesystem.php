@@ -24,7 +24,8 @@ use Magento\Framework\Filesystem\DriverInterface;
 use Magento\Framework\Filesystem\Io\File;
 use Magento\Framework\App\Filesystem\DirectoryList;
 
-class Filesystem {
+class Filesystem
+{
     const EXPORT_PATH = 'msp_cmsimportexport/export';
     const EXTRACT_PATH = 'msp_cmsimportexport/extract';
     const UPLOAD_PATH = 'msp_cmsimportexport/extract';
