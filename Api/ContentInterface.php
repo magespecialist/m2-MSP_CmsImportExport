@@ -1,22 +1,10 @@
 <?php
 /**
- * MageSpecialist
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.txt.
- * It is also available through the world-wide-web at this URL:
- * http://opensource.org/licenses/osl-3.0.php
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to info@magespecialist.it so we can send you a copy immediately.
- *
- * @category   MSP
- * @package    MSP_CmsImportExport
- * @copyright  Copyright (c) 2017 Skeeller srl (http://www.magespecialist.it)
- * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * Copyright © MageSpecialist - Skeeller srl. All rights reserved.
+ * See COPYING.txt for license details.
  */
+
+declare(strict_types=1);
 
 namespace MSP\CmsImportExport\Api;
 
@@ -39,49 +27,49 @@ interface ContentInterface
      * @param $mode
      * @return ContentInterface
      */
-    public function setCmsMode($mode);
+    public function setCmsMode($mode): ContentInterface;
 
     /**
      * Set media mode on import
      * @param $mode
      * @return ContentInterface
      */
-    public function setMediaMode($mode);
+    public function setMediaMode($mode): ContentInterface;
 
     /**
      * Set stores mapping on import
      * @param array $storesMap
      * @return ContentInterface
      */
-    public function setStoresMap(array $storesMap);
+    public function setStoresMap(array $storesMap): ContentInterface;
 
     /**
      * Return CMS block to array
      * @param \Magento\Cms\Api\Data\BlockInterface $blockInterface
      * @return array
      */
-    public function blockToArray(\Magento\Cms\Api\Data\BlockInterface $blockInterface);
+    public function blockToArray(\Magento\Cms\Api\Data\BlockInterface $blockInterface): array ;
 
     /**
      * Return CMS page to array
      * @param \Magento\Cms\Api\Data\PageInterface $pageInterface
      * @return array
      */
-    public function pageToArray(\Magento\Cms\Api\Data\PageInterface $pageInterface);
+    public function pageToArray(\Magento\Cms\Api\Data\PageInterface $pageInterface): array;
 
     /**
      * Return CMS blocks as array
      * @param \Magento\Cms\Api\Data\BlockInterface[] $blockInterfaces
      * @return array
      */
-    public function blocksToArray(array $blockInterfaces);
+    public function blocksToArray(array $blockInterfaces): array;
 
     /**
      * Return CMS pages as array
      * @param \Magento\Cms\Api\Data\PageInterface[] $pageInterfaces
      * @return array
      */
-    public function pagesToArray(array $pageInterfaces);
+    public function pagesToArray(array $pageInterfaces): array;
 
     /**
      * Create a zip file and return its name
@@ -89,21 +77,21 @@ interface ContentInterface
      * @param \Magento\Cms\Api\Data\BlockInterface[] $blockInterfaces
      * @return string
      */
-    public function asZipFile(array $pageInterfaces, array $blockInterfaces);
+    public function asZipFile(array $pageInterfaces, array $blockInterfaces): string;
 
     /**
      * Import a single page from an array and return false on error and true on success
      * @param array $pageData
      * @return bool
      */
-    public function importPageFromArray(array $pageData);
+    public function importPageFromArray(array $pageData): bool;
 
     /**
      * Import a single block from an array and return false on error and true on success
      * @param array $blockData
      * @return bool
      */
-    public function importBlockFromArray(array $blockData);
+    public function importBlockFromArray(array $blockData): bool;
 
     /**
      * Import contents from array and return number of imported records (-1 on error)
@@ -111,7 +99,7 @@ interface ContentInterface
      * @param string $archivePath = null
      * @return int
      */
-    public function importFromArray(array $payload, $archivePath = null);
+    public function importFromArray(array $payload, $archivePath = null): int;
 
     /**
      * Import contents from zip archive and return number of imported records (-1 on error)
@@ -119,5 +107,5 @@ interface ContentInterface
      * @param bool $rm = true
      * @return int
      */
-    public function importFromZipFile($fileName, $rm = false);
+    public function importFromZipFile($fileName, $rm = false): int;
 }

@@ -1,22 +1,10 @@
 <?php
 /**
- * MageSpecialist
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.txt.
- * It is also available through the world-wide-web at this URL:
- * http://opensource.org/licenses/osl-3.0.php
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to info@magespecialist.it so we can send you a copy immediately.
- *
- * @category   MSP
- * @package    MSP_CmsImportExport
- * @copyright  Copyright (c) 2017 Skeeller srl (http://www.magespecialist.it)
- * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * Copyright © MageSpecialist - Skeeller srl. All rights reserved.
+ * See COPYING.txt for license details.
  */
+
+declare(strict_types=1);
 
 namespace MSP\CmsImportExport\Model;
 
@@ -91,98 +79,67 @@ class Content implements ContentInterface
     }
 
     /**
-     * Map stores
-     * @param $storeCodes
-     * @return array
+     * Create a zip file and return its name
+     * @param \Magento\Cms\Api\Data\PageInterface[] $pageInterfaces
+     * @param \Magento\Cms\Api\Data\BlockInterface[] $blockInterfaces
+     * @return string
      */
-    protected function _mapStores($storeCodes)
+    public function asZipFile(array $pageInterfaces, array $blockInterfaces): string
     {
-        $return = [];
-        foreach ($storeCodes as $storeCode) {
-            foreach ($this->storesMap as $to => $from) {
-                if ($storeCode == $from) {
-                    $return[] = $to;
-                }
+        $pagesArray = $this->pagesToArray($pageInterfaces);
+        $blocksArray = $this->blocksToArray($blockInterfaces);
+
+        $contentArray = array_merge_recursive($pagesArray, $blocksArray);
+
+        $jsonPayload = $this->encoderInterface->encode($contentArray);
+
+        $exportPath = $this->filesystem->getExportPath();
+
+        $zipFile = $exportPath . '/' . sprintf('cms_%s.zip', $this->dateTime->date('Ymd_His'));
+        $relativeZipFile = Filesystem::EXPORT_PATH . '/' . sprintf('cms_%s.zip', $this->dateTime->date('Ymd_His'));
+
+        $zipArchive = new \ZipArchive();
+        $zipArchive->open($zipFile, \ZipArchive::CREATE);
+
+        // Add pages json
+        $zipArchive->addFromString(self::JSON_FILENAME, $jsonPayload);
+
+        // Add media files
+        foreach ($contentArray['media'] as $mediaFile) {
+            $absMediaPath = $this->filesystem->getMediaPath($mediaFile);
+            if ($this->file->fileExists($absMediaPath, true)) {
+                $zipArchive->addFile($absMediaPath, self::MEDIA_ARCHIVE_PATH . '/' . $mediaFile);
             }
         }
 
-        return $return;
+        $zipArchive->close();
+
+        // Clear export path
+        $this->file->rm($exportPath, true);
+
+        return $relativeZipFile;
     }
 
     /**
-     * Get store codes
-     * @param array $storeIds
+     * Return CMS pages as array
+     * @param \Magento\Cms\Api\Data\PageInterface[] $pageInterfaces
      * @return array
      */
-    public function getStoreCodes($storeIds)
+    public function pagesToArray(array $pageInterfaces): array
     {
-        $return = [];
+        $pages = [];
+        $media = [];
 
-        foreach ($storeIds as $storeId) {
-            $return[] = $this->storeRepositoryInterface->getById($storeId)->getCode();
+        foreach ($pageInterfaces as $pageInterface) {
+            $pageInfo = $this->pageToArray($pageInterface);
+            $pages[$this->_getPageKey($pageInterface)] = $pageInfo;
+            $media = array_merge($media, $pageInfo['media']);
         }
 
-        return $return;
-    }
-
-    /**
-     * Get store ids by codes
-     * @param array $storeCodes
-     * @return array
-     */
-    public function getStoreIdsByCodes(array $storeCodes)
-    {
-        $return = [];
-        foreach ($storeCodes as $storeCode) {
-            if ($storeCode == 'admin') {
-                $return[] = 0;
-            } else {
-                $store = $this->storeRepositoryInterface->get($storeCode);
-                if ($store && $store->getId()) {
-                    $return[] = $store->getId();
-                }
-            }
-        }
-
-        return $return;
-    }
-
-    /**
-     * Get media attachments from content
-     * @param $content
-     * @return array
-     */
-    public function getMediaAttachments($content)
-    {
-        if (preg_match_all('/\{\{media.+?url\s*=\s*"(.+?)".*?\}\}/', $content, $matches)) {
-            return $matches[1];
-        }
-
-        return [];
-    }
-
-    /**
-     * Return CMS block to array
-     * @param \Magento\Cms\Api\Data\BlockInterface $blockInterface
-     * @return array
-     */
-    public function blockToArray(CmsBlockInterface $blockInterface)
-    {
-        // Extract attachments
-        $media = $this->getMediaAttachments($blockInterface->getContent());
-
-        $payload = [
-            'cms' => [
-                CmsBlockInterface::IDENTIFIER => $blockInterface->getIdentifier(),
-                CmsBlockInterface::TITLE => $blockInterface->getTitle(),
-                CmsBlockInterface::CONTENT => $blockInterface->getContent(),
-                CmsBlockInterface::IS_ACTIVE => $blockInterface->isActive(),
-            ],
-            'stores' => $this->getStoreCodes($blockInterface->getStoreId()),
+        return [
+            'pages' => $pages,
             'media' => $media,
         ];
-
-        return $payload;
     }
 
     /**
@@ -190,7 +147,7 @@ class Content implements ContentInterface
      * @param \Magento\Cms\Api\Data\PageInterface $pageInterface
      * @return array
      */
-    public function pageToArray(CmsPageInterface $pageInterface)
+    public function pageToArray(CmsPageInterface $pageInterface): array
     {
         // Extract attachments
         $media = $this->getMediaAttachments($pageInterface->getContent());
@@ -221,27 +178,44 @@ class Content implements ContentInterface
     }
 
     /**
-     * Get page unique key
-     * @param CmsPageInterface $pageInterface
-     * @return mixed
+     * Get media attachments from content
+     * @param $content
+     * @return array
      */
-    protected function _getPageKey(CmsPageInterface $pageInterface)
+    public function getMediaAttachments($content): array
     {
-        $keys = $this->getStoreCodes($pageInterface->getStoreId());
-        $keys[] = $pageInterface->getIdentifier();
+        if (preg_match_all('/\{\{media.+?url\s*=\s*("|&quot;)(.+?)("|&quot;).*?\}\}/', $content, $matches)) {
+            return $matches[2];
+        }
 
-        return implode(':', $keys);
+        return [];
     }
 
     /**
-     * Get block unique key
-     * @param CmsBlockInterface $blockInterface
-     * @return mixed
+     * Get store codes
+     * @param array $storeIds
+     * @return array
      */
-    protected function _getBlockKey(CmsBlockInterface $blockInterface)
+    public function getStoreCodes($storeIds): array
     {
-        $keys = $this->getStoreCodes($blockInterface->getStoreId());
-        $keys[] = $blockInterface->getIdentifier();
+        $return = [];
+
+        foreach ($storeIds as $storeId) {
+            $return[] = $this->storeRepositoryInterface->getById($storeId)->getCode();
+        }
+
+        return $return;
+    }
+
+    /**
+     * Get page unique key
+     * @param CmsPageInterface $pageInterface
+     * @return string
+     */
+    protected function _getPageKey(CmsPageInterface $pageInterface): string
+    {
+        $keys = $this->getStoreCodes($pageInterface->getStoreId());
+        $keys[] = $pageInterface->getIdentifier();
 
         return implode(':', $keys);
     }
@@ -251,7 +225,7 @@ class Content implements ContentInterface
      * @param \Magento\Cms\Api\Data\BlockInterface[] $blockInterfaces
      * @return array
      */
-    public function blocksToArray(array $blockInterfaces)
+    public function blocksToArray(array $blockInterfaces): array
     {
         $blocks = [];
         $media = [];
@@ -269,67 +243,139 @@ class Content implements ContentInterface
     }
 
     /**
-     * Return CMS pages as array
-     * @param \Magento\Cms\Api\Data\PageInterface[] $pageInterfaces
+     * Return CMS block to array
+     * @param \Magento\Cms\Api\Data\BlockInterface $blockInterface
      * @return array
      */
-    public function pagesToArray(array $pageInterfaces)
+    public function blockToArray(CmsBlockInterface $blockInterface): array
     {
-        $pages = [];
-        $media = [];
+        // Extract attachments
+        $media = $this->getMediaAttachments($blockInterface->getContent());
 
-        foreach ($pageInterfaces as $pageInterface) {
-            $pageInfo = $this->pageToArray($pageInterface);
-            $pages[$this->_getPageKey($pageInterface)] = $pageInfo;
-            $media = array_merge($media, $pageInfo['media']);
-        }
-
-        return [
-            'pages' => $pages,
+        $payload = [
+            'cms' => [
+                CmsBlockInterface::IDENTIFIER => $blockInterface->getIdentifier(),
+                CmsBlockInterface::TITLE => $blockInterface->getTitle(),
+                CmsBlockInterface::CONTENT => $blockInterface->getContent(),
+                CmsBlockInterface::IS_ACTIVE => $blockInterface->isActive(),
+            ],
+            'stores' => $this->getStoreCodes($blockInterface->getStoreId()),
             'media' => $media,
         ];
+
+        return $payload;
     }
 
     /**
-     * Create a zip file and return its name
-     * @param \Magento\Cms\Api\Data\PageInterface[] $pageInterfaces
-     * @param \Magento\Cms\Api\Data\BlockInterface[] $blockInterfaces
+     * Get block unique key
+     * @param CmsBlockInterface $blockInterface
      * @return string
      */
-    public function asZipFile(array $pageInterfaces, array $blockInterfaces)
+    protected function _getBlockKey(CmsBlockInterface $blockInterface): string
     {
-        $pagesArray = $this->pagesToArray($pageInterfaces);
-        $blocksArray = $this->blocksToArray($blockInterfaces);
+        $keys = $this->getStoreCodes($blockInterface->getStoreId());
+        $keys[] = $blockInterface->getIdentifier();
 
-        $contentArray = array_merge_recursive($pagesArray, $blocksArray);
+        return implode(':', $keys);
+    }
 
-        $jsonPayload = $this->encoderInterface->encode($contentArray);
-
-        $exportPath = $this->filesystem->getExportPath();
-
-        $zipFile = $exportPath.'/'.sprintf('cms_%s.zip', $this->dateTime->date('Ymd_His'));
-        $relativeZipFile = Filesystem::EXPORT_PATH.'/'.sprintf('cms_%s.zip', $this->dateTime->date('Ymd_His'));
-
+    /**
+     * Import contents from zip archive and return number of imported records (-1 on error)
+     * @param string $fileName
+     * @param bool $rm = true
+     * @return int
+     * @throws \Exception
+     */
+    public function importFromZipFile($fileName, $rm = false): int
+    {
+        // Unzip archive
         $zipArchive = new \ZipArchive();
-        $zipArchive->open($zipFile, \ZipArchive::CREATE);
+        $res = $zipArchive->open($fileName);
+        if ($res !== true) {
+            throw new \Exception('Cannot open ZIP archive');
+        }
 
-        // Add pages json
-        $zipArchive->addFromString(self::JSON_FILENAME, $jsonPayload);
+        $subPath = md5(date(DATE_RFC2822));
+        $extractPath = $this->filesystem->getExtractPath($subPath);
 
-        // Add media files
-        foreach ($contentArray['media'] as $mediaFile) {
-            $absMediaPath = $this->filesystem->getMediaPath($mediaFile);
-            if ($this->file->fileExists($absMediaPath, true)) {
-                $zipArchive->addFile($absMediaPath, self::MEDIA_ARCHIVE_PATH . '/' . $mediaFile);
+        $zipArchive->extractTo($extractPath);
+        $zipArchive->close();
+
+        // Check if pages.json exists
+        $pagesFile = $extractPath . '/' . self::JSON_FILENAME;
+        if (!$this->file->fileExists($pagesFile, true)) {
+            throw new \Exception(self::JSON_FILENAME . ' is missing');
+        }
+
+        // Read and import
+        $jsonString = $this->file->read($pagesFile);
+        $cmsData = $this->decoderInterface->decode($jsonString);
+
+        $count = $this->importFromArray($cmsData, $extractPath);
+
+        // Remove if necessary
+        if ($rm) {
+            $this->file->rm($fileName);
+        }
+
+        // Clear archive
+        $this->file->rmdir($extractPath, true);
+
+        return $count;
+    }
+
+    /**
+     * Import contents from array and return number of imported records (-1 on error)
+     * @param array $payload
+     * @param string $archivePath = null
+     * @return int
+     * @throws \Exception
+     */
+    public function importFromArray(array $payload, $archivePath = null): int
+    {
+        if (!isset($payload['pages']) && !isset($payload['blocks'])) {
+            throw new \Exception('Invalid json archive');
+        }
+
+        $count = 0;
+
+        // Import pages
+        foreach ($payload['pages'] as $key => $pageData) {
+            if ($this->importPageFromArray($pageData)) {
+                $count++;
             }
         }
 
-        $zipArchive->close();
+        // Import blocks
+        foreach ($payload['blocks'] as $key => $blockData) {
+            if ($this->importBlockFromArray($blockData)) {
+                $count++;
+            }
+        }
 
-        // Clear export path
-        $this->file->rm($exportPath, true);
+        // Import media
+        if ($archivePath && ($count > 0) && ($this->mediaMode != ContentInterface::MEDIA_MODE_NONE)) {
+            foreach ($payload['media'] as $mediaFile) {
+                $sourceFile = $archivePath . '/' . self::MEDIA_ARCHIVE_PATH . '/' . $mediaFile;
+                $destFile = $this->filesystem->getMediaPath($mediaFile);
 
-        return $relativeZipFile;
+                if ($this->file->fileExists($sourceFile, true)) {
+                    if ($this->file->fileExists($destFile, true) &&
+                        ($this->mediaMode == ContentInterface::MEDIA_MODE_SKIP)
+                    ) {
+                        continue;
+                    }
+
+                    if (!$this->file->mkdir(dirname($destFile)) ||
+                        !$this->file->cp($sourceFile, $destFile)) {
+                        throw new \Exception('Unable to save image: ' . $mediaFile);
+                    }
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
     }
 
     /**
@@ -337,7 +383,7 @@ class Content implements ContentInterface
      * @param array $pageData
      * @return bool
      */
-    public function importPageFromArray(array $pageData)
+    public function importPageFromArray(array $pageData): bool
     {
         // Will not use repositories to save pages because it does not allow stores selection
 
@@ -394,11 +440,52 @@ class Content implements ContentInterface
     }
 
     /**
+     * Get store ids by codes
+     * @param array $storeCodes
+     * @return array
+     */
+    public function getStoreIdsByCodes(array $storeCodes): array
+    {
+        $return = [];
+        foreach ($storeCodes as $storeCode) {
+            if ($storeCode == 'admin') {
+                $return[] = 0;
+            } else {
+                $store = $this->storeRepositoryInterface->get($storeCode);
+                if ($store && $store->getId()) {
+                    $return[] = $store->getId();
+                }
+            }
+        }
+
+        return $return;
+    }
+
+    /**
+     * Map stores
+     * @param $storeCodes
+     * @return array
+     */
+    protected function _mapStores($storeCodes): array
+    {
+        $return = [];
+        foreach ($storeCodes as $storeCode) {
+            foreach ($this->storesMap as $to => $from) {
+                if ($storeCode == $from) {
+                    $return[] = $to;
+                }
+            }
+        }
+
+        return $return;
+    }
+
+    /**
      * Import a single block from an array and return false on error and true on success
      * @param array $blockData
      * @return bool
      */
-    public function importBlockFromArray(array $blockData)
+    public function importBlockFromArray(array $blockData): bool
     {
         // Will not use repositories to save blocks because it does not allow stores selection
 
@@ -444,107 +531,11 @@ class Content implements ContentInterface
     }
 
     /**
-     * Import contents from array and return number of imported records (-1 on error)
-     * @param array $payload
-     * @param string $archivePath = null
-     * @return int
-     * @throws \Exception
-     */
-    public function importFromArray(array $payload, $archivePath = null)
-    {
-        if (!isset($payload['pages']) && !isset($payload['blocks'])) {
-            throw new \Exception('Invalid json archive');
-        }
-
-        $count = 0;
-
-        // Import pages
-        foreach ($payload['pages'] as $key => $pageData) {
-            if ($this->importPageFromArray($pageData)) {
-                $count++;
-            }
-        }
-
-        // Import blocks
-        foreach ($payload['blocks'] as $key => $blockData) {
-            if ($this->importBlockFromArray($blockData)) {
-                $count++;
-            }
-        }
-
-        // Import media
-        if ($archivePath && ($count > 0) && ($this->mediaMode != ContentInterface::MEDIA_MODE_NONE)) {
-            foreach ($payload['media'] as $mediaFile) {
-                $sourceFile = $archivePath.'/'.self::MEDIA_ARCHIVE_PATH.'/'.$mediaFile;
-                $destFile = $this->filesystem->getMediaPath($mediaFile);
-
-                if ($this->file->fileExists($sourceFile, true)) {
-                    if ($this->file->fileExists($destFile, true) &&
-                        ($this->mediaMode == ContentInterface::MEDIA_MODE_SKIP)
-                    ) {
-                        continue;
-                    }
-
-                    $this->file->cp($sourceFile, $destFile);
-                    $count++;
-                }
-            }
-        }
-
-        return $count;
-    }
-
-    /**
-     * Import contents from zip archive and return number of imported records (-1 on error)
-     * @param string $fileName
-     * @param bool $rm = true
-     * @return int
-     * @throws \Exception
-     */
-    public function importFromZipFile($fileName, $rm = false)
-    {
-        // Unzip archive
-        $zipArchive = new \ZipArchive();
-        $res = $zipArchive->open($fileName);
-        if ($res !== true) {
-            throw new \Exception('Cannot open ZIP archive');
-        }
-
-        $subPath = md5(uniqid(time()));
-        $extractPath = $this->filesystem->getExtractPath($subPath);
-
-        $zipArchive->extractTo($extractPath);
-        $zipArchive->close();
-
-        // Check if pages.json exists
-        $pagesFile = $extractPath.'/'.self::JSON_FILENAME;
-        if (!$this->file->fileExists($pagesFile, true)) {
-            throw new \Exception(self::JSON_FILENAME.' is missing');
-        }
-
-        // Read and import
-        $jsonString = $this->file->read($pagesFile);
-        $cmsData = $this->decoderInterface->decode($jsonString);
-
-        $count = $this->importFromArray($cmsData, $extractPath);
-
-        // Remove if necessary
-        if ($rm) {
-            $this->file->rm($fileName);
-        }
-
-        // Clear archive
-        $this->file->rmdir($extractPath, true);
-
-        return $count;
-    }
-
-    /**
      * Set CMS mode
      * @param $mode
-     * @return $this
+     * @return ContentInterface
      */
-    public function setCmsMode($mode)
+    public function setCmsMode($mode): ContentInterface
     {
         $this->cmsMode = $mode;
         return $this;
@@ -553,9 +544,9 @@ class Content implements ContentInterface
     /**
      * Set media mode
      * @param $mode
-     * @return $this
+     * @return ContentInterface
      */
-    public function setMediaMode($mode)
+    public function setMediaMode($mode): ContentInterface
     {
         $this->mediaMode = $mode;
         return $this;
@@ -566,7 +557,7 @@ class Content implements ContentInterface
      * @param array $storesMap
      * @return ContentInterface
      */
-    public function setStoresMap(array $storesMap)
+    public function setStoresMap(array $storesMap): ContentInterface
     {
         return $this;
     }
