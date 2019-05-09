@@ -366,8 +366,12 @@ class Content implements ContentInterface
                         continue;
                     }
 
-                    if (!$this->file->mkdir(dirname($destFile)) ||
-                        !$this->file->cp($sourceFile, $destFile)) {
+                    if (!$this->file->fileExists(dirname($destFile), false)) {
+                        if (!$this->file->mkdir(dirname($destFile))) {
+                            throw new \Exception('Unable to create folder: ' . dirname($destFile));
+                        }
+                    }
+                    if (!$this->file->cp($sourceFile, $destFile)) {
                         throw new \Exception('Unable to save image: ' . $mediaFile);
                     }
                     $count++;
