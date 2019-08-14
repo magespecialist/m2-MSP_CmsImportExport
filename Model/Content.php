@@ -106,6 +106,8 @@ class Content implements ContentInterface
 
         // Add media files
         foreach ($contentArray['media'] as $mediaFile) {
+            //Strip Quotes if any
+            $mediaFile = str_replace(array('"',"&quot;","'"), '', $mediaFile);            
             $absMediaPath = $this->filesystem->getMediaPath($mediaFile);
             if ($this->file->fileExists($absMediaPath, true)) {
                 $zipArchive->addFile($absMediaPath, self::MEDIA_ARCHIVE_PATH . '/' . $mediaFile);
@@ -184,8 +186,8 @@ class Content implements ContentInterface
      */
     public function getMediaAttachments($content): array
     {
-        if (preg_match_all('/\{\{media.+?url\s*=\s*("|&quot;)(.+?)("|&quot;).*?\}\}/', $content, $matches)) {
-            return $matches[2];
+        if (preg_match_all('/\{\{media.+?url\s*=\s*(.+?)\}\}/', $content, $matches)) {
+            return $matches[1];
         }
 
         return [];
