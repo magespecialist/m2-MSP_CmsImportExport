@@ -26,10 +26,10 @@ class Post extends Action
         RedirectFactory $redirectFactory,
         Filesystem $filesystem
     ) {
-        $this->uploaderFactory = $uploaderFactory;
+        $this->uploaderFactory  = $uploaderFactory;
         $this->contentInterface = $contentInterface;
-        $this->filesystem = $filesystem;
-        $this->redirectFactory = $redirectFactory;
+        $this->filesystem       = $filesystem;
+        $this->redirectFactory  = $redirectFactory;
 
         parent::__construct($context);
     }
@@ -41,30 +41,35 @@ class Post extends Action
 
     public function execute()
     {
-        $cmsMode = $this->getRequest()->getParam('cms_mode');
-        $mediaMode = $this->getRequest()->getParam('media_mode');
-        $storesMap = $this->getRequest()->getParam('store_map');
-        
-        $destinationPath = $this->filesystem->getUploadPath();
+        try {
+            $cmsMode   = $this->getRequest()->getParam('cms_mode');
+            $mediaMode = $this->getRequest()->getParam('media_mode');
+            $storesMap = $this->getRequest()->getParam('store_map');
 
-        $uploader = $this->uploaderFactory->create(['fileId' => 'zipfile']);
-        $uploader->setAllowRenameFiles(true);
-        $uploader->setFilesDispersion(true);
-        $uploader->setAllowCreateFolders(true);
-        $result = $uploader->save($destinationPath);
+            $destinationPath = $this->filesystem->getUploadPath();
 
-        $zipFile = $result['path'].$result['file'];
+            $uploader = $this->uploaderFactory->create(['fileId' => 'zipfile']);
+            $uploader->setAllowRenameFiles(true);
+            $uploader->setFilesDispersion(true);
+            $uploader->setAllowCreateFolders(true);
+            $result = $uploader->save($destinationPath);
 
-        $this->contentInterface
-            ->setCmsMode($cmsMode)
-            ->setMediaMode($mediaMode)
-            ->setStoresMap($storesMap);
+            $zipFile = $result['path'] . $result['file'];
 
-        $count = $this->contentInterface->importFromZipFile($zipFile, true);
+            $this->contentInterface
+                ->setCmsMode($cmsMode)
+                ->setMediaMode($mediaMode)
+                ->setStoresMap($storesMap);
 
-        $this->messageManager->addSuccess(__('A total of %1 item(s) have been imported/updated.', $count));
+            $count = $this->contentInterface->importFromZipFile($zipFile, true);
+
+            $this->messageManager->addSuccessMessage(__('A total of %1 item(s) have been imported/updated.', $count));
+        } catch (\Exception $e) {
+            $this->messageManager->addExceptionMessage($e);
+        }
 
         $resultRedirect = $this->redirectFactory->create();
+
         return $resultRedirect->setPath('*/*/index');
     }
 }
