@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace MSP\CmsImportExport\Model;
 
 use Magento\Cms\Api\BlockRepositoryInterface;
+use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Store\Api\StoreRepositoryInterface;
 use Magento\Framework\Json\DecoderInterface;
 use Magento\Framework\Json\EncoderInterface;
@@ -172,6 +173,7 @@ class Content implements ContentInterface
             ],
             'stores' => $this->getStoreCodes($pageInterface->getStoreId()),
             'media' => $media,
+            'block_references' => $this->saveBlockByIdent($pageInterface->getContent()),
         ];
 
         return $payload;
@@ -261,6 +263,7 @@ class Content implements ContentInterface
             ],
             'stores' => $this->getStoreCodes($blockInterface->getStoreId()),
             'media' => $media,
+            'block_references' => $this->saveBlockByIdent($blockInterface->getContent()),
         ];
 
         return $payload;
@@ -278,6 +281,61 @@ class Content implements ContentInterface
 
         return implode(':', $keys);
     }
+
+    /**
+     * @param string $content
+     *
+     * @return array
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
+    protected function saveBlockByIdent(string $content)
+    {
+        $references = [];
+
+        if (preg_match_all('/{{widget.+?block_id\s*=\s*("|&quot;)(\d+?)("|&quot;).*?}}/', $content, $matches)) {
+            foreach ($matches[2] as $blockId) {
+                $block                = $this->blockRepositoryInterface->getById($blockId);
+                $references[$blockId] = $block->getIdentifier();
+            }
+        }
+
+        return $references;
+    }
+
+    /**
+     * @param array  $cmsData
+     * @param string $contentKey
+     *
+     * @return array[]
+     * @throws NoSuchEntityException
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
+    protected function loadBlocksByIdent(array $cmsData, string $contentKey)
+    {
+        if (isset($cmsData['block_references'])) {
+            $pairs = [];
+            foreach ($cmsData['block_references'] as $blockId => $blockIdent) {
+                $block           = $this->blockRepositoryInterface->getById($blockIdent);
+                $pairs[$blockId] = $block->getId();
+            }
+
+            $cmsData['cms'][$contentKey] = preg_replace_callback(
+                '/({{widget.+?block_id\s*=\s*)("|&quot;)(\d+?)("|&quot;)(.*?}})/',
+                function ($matches) use ($pairs) {
+                    if (isset($pairs[$matches[3]])) {
+                        return $matches[1] . $matches[2] . $pairs[$matches[3]] . $matches[4] . $matches[5];
+                    }
+
+                    return $matches[0];
+                },
+                $cmsData['cms'][$contentKey]
+            );
+        }
+
+        return $cmsData;
+    }
+
+
 
     /**
      * Import contents from zip archive and return number of imported records (-1 on error)
@@ -384,11 +442,19 @@ class Content implements ContentInterface
 
     /**
      * Import a single page from an array and return false on error and true on success
+     *
      * @param array $pageData
+     *
      * @return bool
+     * @throws NoSuchEntityException
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
     public function importPageFromArray(array $pageData): bool
     {
+
+        // Process block identifiers
+        $pageData = $this->loadBlocksByIdent($pageData, CmsPageInterface::IDENTIFIER);
+
         // Will not use repositories to save pages because it does not allow stores selection
 
         $storeIds = $this->getStoreIdsByCodes($this->_mapStores($pageData['stores']));
@@ -486,11 +552,19 @@ class Content implements ContentInterface
 
     /**
      * Import a single block from an array and return false on error and true on success
+     *
      * @param array $blockData
+     *
      * @return bool
+     * @throws NoSuchEntityException
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
     public function importBlockFromArray(array $blockData): bool
     {
+
+        // Process block identifiers
+        $blockData = $this->loadBlocksByIdent($blockData, CmsBlockInterface::IDENTIFIER);
+
         // Will not use repositories to save blocks because it does not allow stores selection
 
         $storeIds = $this->getStoreIdsByCodes($this->_mapStores($blockData['stores']));
