@@ -184,11 +184,19 @@ class Content implements ContentInterface
      */
     public function getMediaAttachments($content): array
     {
+        $result = [];
+
         if (preg_match_all('/\{\{media.+?url\s*=\s*("|&quot;)(.+?)("|&quot;).*?\}\}/', $content, $matches)) {
-            return $matches[2];
+            $result += $matches[2];
         }
 
-        return [];
+        //Check for image URLs without quotes from PageBuilder
+        if (preg_match_all('/{{media.+?url\s*=\s*(?!"|&quot;)(.+?)}}/', $content, $matches)) {
+            $result += $matches[1];
+        }
+
+
+        return $result;
     }
 
     /**
