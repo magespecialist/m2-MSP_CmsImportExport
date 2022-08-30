@@ -22,6 +22,7 @@ use Magento\Cms\Model\ResourceModel\Block\CollectionFactory as CmsBlockCollectio
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use MSP\CmsImportExport\Api\ContentInterface;
 use Magento\Framework\Filesystem\Io\File;
+use Magento\Framework\Message\ManagerInterface;
 
 class Content implements ContentInterface
 {
@@ -43,6 +44,7 @@ class Content implements ContentInterface
     protected $cmsMode;
     protected $mediaMode;
     protected $storesMap;
+    protected $messageManager;
 
     public function __construct(
         StoreRepositoryInterface $storeRepositoryInterface,
@@ -55,7 +57,8 @@ class Content implements ContentInterface
         BlockRepositoryInterface $blockRepositoryInterface,
         Filesystem $filesystem,
         File $file,
-        DateTime $dateTime
+        DateTime $dateTime,
+        ManagerInterface $messageManager
     ) {
         $this->storeRepositoryInterface = $storeRepositoryInterface;
         $this->encoderInterface = $encoderInterface;
@@ -68,6 +71,7 @@ class Content implements ContentInterface
         $this->filesystem = $filesystem;
         $this->file = $file;
         $this->dateTime = $dateTime;
+        $this->messageManager = $messageManager;
 
         $this->cmsMode = ContentInterface::CMS_MODE_UPDATE;
         $this->mediaMode = ContentInterface::MEDIA_MODE_UPDATE;
@@ -472,8 +476,24 @@ class Content implements ContentInterface
             ->addFieldToFilter(CmsPageInterface::IDENTIFIER, $pageData['cms'][CmsPageInterface::IDENTIFIER]);
 
         $pageId = 0;
+        $cms = $pageData['cms'];
+        $isActive = $cms[CmsBlockInterface::IS_ACTIVE];
+
         foreach ($collection as $item) {
-            $storesIntersect = array_intersect($item->getStoreId(), $storeIds);
+            if (is_array($item->getStoreId())) {
+                $storesIntersect = array_intersect($item->getStoreId(), $storeIds);
+            } else {
+                $this->messageManager->addWarningMessage(
+                    'Unable to get stores for page: ' .
+                    $cms[CmsBlockInterface::IDENTIFIER]. '. ' .
+                    "Disable page and set scope to all stores."
+                );
+
+                $isActive = false;
+                $storeIds = ['0'];
+
+                break;
+            }
 
             // @codingStandardsIgnoreStart
             if (count($storesIntersect)) {
@@ -492,8 +512,6 @@ class Content implements ContentInterface
             }
         }
 
-        $cms = $pageData['cms'];
-
         $page
             ->setIdentifier($cms[CmsPageInterface::IDENTIFIER])
             ->setTitle($cms[CmsPageInterface::TITLE])
@@ -509,7 +527,7 @@ class Content implements ContentInterface
             ->setCustomLayoutUpdateXml($cms[CmsPageInterface::CUSTOM_LAYOUT_UPDATE_XML])
             ->setCustomThemeFrom($cms[CmsPageInterface::CUSTOM_THEME_FROM])
             ->setCustomThemeTo($cms[CmsPageInterface::CUSTOM_THEME_TO])
-            ->setIsActive($cms[CmsPageInterface::IS_ACTIVE]);
+            ->setIsActive($isActive);
 
         $page->setData('stores', $storeIds);
         $page->save();
@@ -582,8 +600,24 @@ class Content implements ContentInterface
             ->addFieldToFilter(CmsBlockInterface::IDENTIFIER, $blockData['cms'][CmsBlockInterface::IDENTIFIER]);
 
         $blockId = 0;
+        $cms = $blockData['cms'];
+        $isActive = $cms[CmsBlockInterface::IS_ACTIVE];
+
         foreach ($collection as $item) {
-            $storesIntersect = array_intersect($item->getStoreId(), $storeIds);
+            if (is_array($item->getStoreId())) {
+                $storesIntersect = array_intersect($item->getStoreId(), $storeIds);
+            } else {
+                $this->messageManager->addWarningMessage(
+                    'Unable to get stores for block: ' .
+                    $cms[CmsBlockInterface::IDENTIFIER]. '. ' .
+                    "Disable block and set scope to all stores."
+                );
+
+                $isActive = false;
+                $storeIds = ['0'];
+
+                break;
+            }
 
             // @codingStandardsIgnoreStart
             if (count($storesIntersect)) {
@@ -602,13 +636,11 @@ class Content implements ContentInterface
             }
         }
 
-        $cms = $blockData['cms'];
-
         $block
             ->setIdentifier($cms[CmsBlockInterface::IDENTIFIER])
             ->setTitle($cms[CmsBlockInterface::TITLE])
             ->setContent($cms[CmsBlockInterface::CONTENT])
-            ->setIsActive($cms[CmsBlockInterface::IS_ACTIVE]);
+            ->setIsActive($isActive);
 
         $block->setData('stores', $storeIds);
         $block->save();
