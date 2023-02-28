@@ -501,7 +501,7 @@ class Content implements ContentInterface
 
         $blockId = 0;
         foreach ($collection as $item) {
-            $storesIntersect = array_intersect($item->getStoreId(), $storeIds);
+            $storesIntersect = array_intersect((array)$item->getStoreId(), (array)$storeIds);
 
             // @codingStandardsIgnoreStart
             if (count($storesIntersect)) {
